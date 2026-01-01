@@ -20,7 +20,7 @@
         </div>
     </div>
 
-    <!-- Main App (hidden until login) -->
+    <!-- Main App -->
     <div id="main-app" style="display: none;">
         <header>
             <h1>MIDARA</h1>
@@ -29,8 +29,8 @@
         </header>
 
         <div class="controls" style="text-align: center; margin: 15px 0; padding: 0 10px;">
-            <button onclick="loadFromGitHub()">Refresh Data</button>
-            <button onclick="saveToGitHub()">Save to GitHub</button>
+            <button onclick="loadFromSheets()">Refresh from Sheet</button>
+            <button onclick="downloadUpdatedCSV()">Download Updated CSV</button>
             <button onclick="logout()" class="logout-btn">Logout</button>
         </div>
 
@@ -89,7 +89,7 @@
         </div>
 
         <div id="earnings" class="tab-content" style="display:none;">
-            <h2>Combined Earnings 💕</h2>
+            <h2>Our Combined Earnings 💕</h2>
             <div id="earnings-summary"></div>
         </div>
     </div>
