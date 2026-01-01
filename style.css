@@ -1,0 +1,261 @@
+/* MIDARA - Private Couple's Diary - Fully Responsive */
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+header {
+    background: linear-gradient(120deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    text-align: center;
+    padding: 30px 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border-bottom: 5px solid #ff6b6b;
+}
+
+header h1 {
+    font-size: 3rem;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+header #current-date {
+    font-size: 1.2rem;
+    margin-top: 10px;
+    opacity: 0.95;
+}
+
+/* Controls */
+.controls button {
+    padding: 12px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.controls button:not(.logout-btn) {
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+}
+
+.logout-btn {
+    background: #ff6b6b;
+    color: white;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    justify-content: center;
+    background: #ffffff;
+    padding: 10px 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.tabs button {
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 8px;
+    min-width: 120px;
+    transition: all 0.3s;
+}
+
+.tabs button:hover {
+    background: #f0f0ff;
+    color: #6a11cb;
+}
+
+.tabs button.active {
+    background: #6a11cb;
+    color: white;
+    font-weight: bold;
+}
+
+.tab-content {
+    padding: 15px;
+}
+
+/* Columns */
+.columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.column {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.column h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    background: linear-gradient(90deg, #ff6b6b, #6a11cb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Forms */
+form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+form input, form select, form button {
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+}
+
+form button {
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* Tables */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #f8f9ff;
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 0.95rem;
+}
+
+th {
+    background: #6a11cb;
+    color: white;
+    padding: 12px;
+}
+
+td {
+    padding: 10px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+}
+
+tr:hover { background: #f0f0ff; }
+tr.done { opacity: 0.7; background: #e8f5e8 !important; }
+
+#reminders-table th { background: #ff6b6b; }
+
+/* Earnings */
+#earnings-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+#earnings-summary h3 {
+    grid-column: 1 / -1;
+    text-align: center;
+    font-size: 1.8rem;
+    color: #6a11cb;
+}
+
+#earnings-summary p {
+    background: white;
+    padding: 18px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 1.3rem;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    border-left: 6px solid #ff6b6b;
+}
+
+/* Login Screen */
+#login-screen {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.login-box {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+}
+
+.login-box h1 {
+    background: linear-gradient(90deg, #ff6b6b, #6a11cb);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+.login-box input {
+    width: 100%;
+    padding: 14px;
+    margin: 12px 0;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 1.1rem;
+    box-sizing: border-box;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(90deg, #6a11cb, #2575fc);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+    .columns { flex-wrap: nowrap; }
+    form { grid-template-columns: 1fr 1fr; }
+    form button { grid-column: span 2; }
+    header h1 { font-size: 3.5rem; }
+}
+
+@media (max-width: 480px) {
+    header h1 { font-size: 2.5rem; }
+    .tabs button { min-width: auto; padding: 10px 16px; }
+    table { font-size: 0.85rem; }
+    th, td { padding: 8px 4px; }
+}

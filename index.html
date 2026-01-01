@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDARA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>MIDARA 💕</h1>
+            <p>Welcome back, love</p>
+            <input type="text" id="username" placeholder="Username (Gachara or Mideva)" autocomplete="username">
+            <input type="password" id="password" placeholder="Password" autocomplete="current-password">
+            <button onclick="attemptLogin()">Enter Diary</button>
+            <p id="login-error" style="color: #ff6b6b; margin-top: 15px; display: none;">Wrong username or password ❤️ Try again</p>
+        </div>
+    </div>
+
+    <!-- Main App (hidden until login) -->
+    <div id="main-app" style="display: none;">
+        <header>
+            <h1>MIDARA</h1>
+            <p id="current-date"></p>
+            <p id="welcome-user" style="font-size: 1.3rem; margin-top: 8px; color: #ff6b6b;"></p>
+        </header>
+
+        <div class="controls" style="text-align: center; margin: 15px 0; padding: 0 10px;">
+            <button onclick="loadFromGitHub()">Refresh Data</button>
+            <button onclick="saveToGitHub()">Save to GitHub</button>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+
+        <div class="tabs">
+            <button onclick="showTab('daily')" class="active">Daily To-Do</button>
+            <button onclick="showTab('reminders')">Reminders</button>
+            <button onclick="showTab('earnings')">Earnings</button>
+        </div>
+
+        <div id="daily" class="tab-content">
+            <div class="columns">
+                <div class="column">
+                    <h2>Gachara</h2>
+                    <form id="gachara-form">
+                        <input type="text" placeholder="Task Name" required>
+                        <select onchange="toggleAmount(this)">
+                            <option value="other">Other</option>
+                            <option value="work">Work</option>
+                        </select>
+                        <input type="number" placeholder="Amount (KSh)" style="display:none;" min="0">
+                        <input type="date" required>
+                        <button type="button" onclick="addTask('Gachara')">Add Task</button>
+                    </form>
+                    <table id="gachara-table">
+                        <thead><tr><th>Name</th><th>Type</th><th>Amount</th><th>Deadline</th><th>Done</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="column">
+                    <h2>Mideva</h2>
+                    <form id="mideva-form">
+                        <input type="text" placeholder="Task Name" required>
+                        <select onchange="toggleAmount(this)">
+                            <option value="other">Other</option>
+                            <option value="work">Work</option>
+                        </select>
+                        <input type="number" placeholder="Amount (KSh)" style="display:none;" min="0">
+                        <input type="date" required>
+                        <button type="button" onclick="addTask('Mideva')">Add Task</button>
+                    </form>
+                    <table id="mideva-table">
+                        <thead><tr><th>Name</th><th>Type</th><th>Amount</th><th>Deadline</th><th>Done</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="reminders" class="tab-content" style="display:none;">
+            <h2>Reminders – Most Overdue First</h2>
+            <table id="reminders-table">
+                <thead><tr><th>Person</th><th>Name</th><th>Deadline</th><th>Overdue Days</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="earnings" class="tab-content" style="display:none;">
+            <h2>Combined Earnings 💕</h2>
+            <div id="earnings-summary"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
