@@ -1,9 +1,6 @@
-// === IMPORTANT: UPDATE THESE ===
-const GITHUB_OWNER = 'your-github-username';     // e.g., 'gachara123'
-const GITHUB_REPO = 'your-repo-name';           // e.g., 'midara-diary'
-const CSV_PATH = 'data.csv';
-const GITHUB_BRANCH = 'main';
-const RAW_CSV_URL = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${CSV_PATH}`;
+// === Google Sheets Config ===
+// PASTE YOUR PUBLISHED CSV LINK HERE AFTER PUBLISHING THE SHEET
+const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/YOUR_PUBLISHED_LINK_HERE/pub?output=csv';
 
 // === Login System ===
 const VALID_USERS = {
@@ -26,7 +23,7 @@ function attemptLogin() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
         document.getElementById('welcome-user').textContent = `Welcome home, ${currentUser} ❤️`;
-        loadFromGitHub();
+        loadFromSheets();
     } else {
         document.getElementById('login-error').style.display = 'block';
     }
@@ -95,6 +92,7 @@ function addTask(person) {
     });
 
     renderTasks();
+    saveToLocalStorage(); // Auto-save locally
     form.reset();
     inputs[2].style.display = 'none';
 }
@@ -105,6 +103,7 @@ function markDone(id, checked) {
         task.done = checked;
         task.completed_date = checked ? getCurrentDateISO() : '';
         renderTasks();
+        saveToLocalStorage(); // Auto-save locally
     }
 }
 
@@ -186,25 +185,18 @@ function renderEarnings() {
     `;
 }
 
-// === GitHub CSV ===
-function getGitHubToken() {
-    let token = sessionStorage.getItem('github_pat');
-    if (!token) {
-        token = prompt('Enter your GitHub Personal Access Token (PAT) to save:');
-        if (token) sessionStorage.setItem('github_pat', token);
-    }
-    return token;
-}
-
-async function loadFromGitHub() {
+// === Google Sheets Integration ===
+async function loadFromSheets() {
     try {
-        const res = await fetch(RAW_CSV_URL + '?t=' + Date.now()); // cache bust
-        if (!res.ok) throw new Error('Not found or private repo');
+        const res = await fetch(SHEETS_CSV_URL + '?t=' + Date.now());
+        if (!res.ok) throw new Error('Sheet not published or inaccessible');
         const text = await res.text();
         parseCSV(text);
         renderTasks();
     } catch (e) {
-        alert('Could not load data: ' + e.message + '\nCheck repo settings or internet.');
+        console.error(e);
+        alert('Could not load from Google Sheet. Using local data.\nMake sure the sheet is published to web as CSV.');
+        loadFromLocalStorage();
     }
 }
 
@@ -212,71 +204,56 @@ function parseCSV(text) {
     tasks = [];
     nextId = 1;
     const lines = text.trim().split('\n');
-    if (lines.length <= 1) return; // empty or header only
+    if (lines.length <= 1) return;
     lines.slice(1).forEach(line => {
-        const [id, name, type, amount, deadline, done, completed, person] = line.split(',');
+        const parts = line.split(',');
+        if (parts.length < 8) return;
         const task = {
-            id: parseInt(id),
-            task_name: name,
-            type,
-            amount: parseFloat(amount) || 0,
-            deadline,
-            done: done === 'true',
-            completed_date: completed || '',
-            person
+            id: parseInt(parts[0]) || 0,
+            task_name: parts[1] || '',
+            type: parts[2] || 'other',
+            amount: parseFloat(parts[3]) || 0,
+            deadline: parts[4] || '',
+            done: parts[5] === 'true',
+            completed_date: parts[6] || '',
+            person: parts[7] || ''
         };
-        tasks.push(task);
         if (task.id >= nextId) nextId = task.id + 1;
+        tasks.push(task);
     });
 }
 
-async function getFileSHA() {
-    const token = getGitHubToken();
-    if (!token) return null;
-    const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${CSV_PATH}?ref=${GITHUB_BRANCH}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.sha;
+function loadFromLocalStorage() {
+    const saved = localStorage.getItem('midara_tasks');
+    if (saved) {
+        tasks = JSON.parse(saved);
+        nextId = tasks.reduce((max, t) => Math.max(max, t.id || 0) + 1, 1);
+        renderTasks();
+    }
 }
 
-async function saveToGitHub() {
-    const token = getGitHubToken();
-    if (!token) return alert('PAT required to save');
+function saveToLocalStorage() {
+    localStorage.setItem('midara_tasks', JSON.stringify(tasks));
+}
 
-    const sha = await getFileSHA();
-    if (!sha) return alert('Could not get file info (wrong PAT or repo?)');
-
+function downloadUpdatedCSV() {
     const header = 'id,task_name,type,amount,deadline,done,completed_date,person\n';
     const rows = tasks.map(t => `${t.id},${t.task_name},${t.type},${t.amount},${t.deadline},${t.done},${t.completed_date},${t.person}`).join('\n');
-    const content = btoa(unescape(encodeURIComponent(header + rows)));
+    const csvContent = header + rows;
 
-    const body = {
-        message: `MIDARA update by ${currentUser} on ${new Date().toISOString()}`,
-        content,
-        sha,
-        branch: GITHUB_BRANCH
-    };
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'midara-data-updated.csv';
+    a.click();
+    URL.revokeObjectURL(url);
 
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${CSV_PATH}`, {
-        method: 'PUT',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/vnd.github+json'
-        },
-        body: JSON.stringify(body)
-    });
-
-    if (res.ok) {
-        alert('Saved successfully! 💕');
-        loadFromGitHub();
-    } else {
-        const err = await res.json();
-        alert('Save failed: ' + (err.message || 'Unknown error'));
-    }
+    alert('CSV downloaded! 💕\nImport this file into your Google Sheet:\nFile → Import → Upload → Replace current sheet');
 }
 
 // === Init ===
 updateDate();
 setInterval(updateDate, 60000);
-setInterval(loadFromGitHub, 30000); // Auto-refresh every 30s
+setInterval(loadFromSheets, 30000); // Auto-refresh every 30s
+loadFromSheets(); // Initial load
