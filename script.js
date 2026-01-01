@@ -1,6 +1,6 @@
 // === Google Sheets Config ===
 // PASTE YOUR PUBLISHED CSV LINK HERE AFTER PUBLISHING THE SHEET
-const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/YOUR_PUBLISHED_LINK_HERE/pub?output=csv';
+const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/https://docs.google.com/spreadsheets/d/1i6muUOcZLbXbgyUJn89QPIiRibsaju-M2LmvK4bocyI/edit?usp=sharing/pub?output=csv';
 
 // === Login System ===
 const VALID_USERS = {
@@ -257,3 +257,4 @@ updateDate();
 setInterval(updateDate, 60000);
 setInterval(loadFromSheets, 30000); // Auto-refresh every 30s
 loadFromSheets(); // Initial load
+
