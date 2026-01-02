@@ -1,6 +1,6 @@
 // === Google Sheets Config ===
-// PASTE YOUR PUBLISHED CSV LINK HERE AFTER PUBLISHING THE SHEET
-const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRRMn_yfQj367qpWx_2TeusvW1a_KquEbFhJXCXItvnyTHxmWyQnkWNQTow-EhIbzHEgRW9cQVk7ZEf/pubhtml';
+// Correct published CSV export link (ends with /pub?output=csv)
+const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRRMn_yfQj367qpWx_2TeusvW1a_KquEbFhJXCXItvnyTHxmWyQnkWNQTow-EhIbzHEgRW9cQVk7ZEf/pub?output=csv';
 
 // === Login System ===
 const VALID_USERS = {
@@ -46,7 +46,7 @@ function getCurrentDate() {
 
 function getCurrentDateISO() {
     const now = new Date();
-    const offset = 3 * 60;
+    const offset = 3 * 60; // EAT = UTC+3
     const eat = new Date(now.getTime() + offset * 60 * 1000);
     return eat.toISOString().split('T')[0];
 }
@@ -92,7 +92,7 @@ function addTask(person) {
     });
 
     renderTasks();
-    saveToLocalStorage(); // Auto-save locally
+    saveToLocalStorage();
     form.reset();
     inputs[2].style.display = 'none';
 }
@@ -103,7 +103,7 @@ function markDone(id, checked) {
         task.done = checked;
         task.completed_date = checked ? getCurrentDateISO() : '';
         renderTasks();
-        saveToLocalStorage(); // Auto-save locally
+        saveToLocalStorage();
     }
 }
 
@@ -189,13 +189,13 @@ function renderEarnings() {
 async function loadFromSheets() {
     try {
         const res = await fetch(SHEETS_CSV_URL + '?t=' + Date.now());
-        if (!res.ok) throw new Error('Sheet not published or inaccessible');
+        if (!res.ok) throw new Error('Sheet not accessible');
         const text = await res.text();
         parseCSV(text);
         renderTasks();
     } catch (e) {
         console.error(e);
-        alert('Could not load from Google Sheet. Using local data.\nMake sure the sheet is published to web as CSV.');
+        alert('Could not load from Google Sheet. Using local data.\nCheck if the sheet is still published as CSV.');
         loadFromLocalStorage();
     }
 }
@@ -257,5 +257,3 @@ updateDate();
 setInterval(updateDate, 60000);
 setInterval(loadFromSheets, 30000); // Auto-refresh every 30s
 loadFromSheets(); // Initial load
-
-
