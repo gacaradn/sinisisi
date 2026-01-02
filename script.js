@@ -257,3 +257,4 @@ updateDate();
 setInterval(updateDate, 60000);
 setInterval(loadFromSheets, 30000); // Auto-refresh every 30s
 loadFromSheets(); // Initial load
+
