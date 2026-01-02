@@ -1,5 +1,4 @@
 // === Google Sheets Config ===
-// Correct published CSV export link (ends with /pub?output=csv)
 const SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRRMn_yfQj367qpWx_2TeusvW1a_KquEbFhJXCXItvnyTHxmWyQnkWNQTow-EhIbzHEgRW9cQVk7ZEf/pub?output=csv';
 
 // === Login System ===
@@ -38,7 +37,7 @@ function logout() {
     document.getElementById('login-error').style.display = 'none';
 }
 
-// === Date ===
+// === Date Helpers ===
 function getCurrentDate() {
     const options = { timeZone: timezone, year: 'numeric', month: 'long', day: 'numeric' };
     return new Date().toLocaleDateString('en-US', options);
@@ -55,7 +54,7 @@ function updateDate() {
     document.getElementById('current-date').textContent = `Today: ${getCurrentDate()}`;
 }
 
-// === UI ===
+// === UI Control ===
 function toggleAmount(select) {
     const amountInput = select.parentNode.querySelector('input[type="number"]');
     amountInput.style.display = select.value === 'work' ? 'inline' : 'none';
@@ -66,10 +65,11 @@ function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
     document.getElementById(tabId).style.display = 'block';
-    document.querySelector(`button[onclick="showTab('${tabId}')"]`).classList.add('active');
+    const btn = document.querySelector(`button[onclick="showTab('${tabId}')"]`);
+    if (btn) btn.classList.add('active');
 }
 
-// === Tasks ===
+// === Tasks Logic ===
 function addTask(person) {
     const form = document.getElementById(person.toLowerCase() + '-form');
     const inputs = form.querySelectorAll('input, select');
@@ -110,8 +110,11 @@ function markDone(id, checked) {
 // === Rendering ===
 function renderTasks() {
     ['gachara', 'mideva'].forEach(p => {
-        const tbody = document.getElementById(`${p}-table`).querySelector('tbody');
+        const table = document.getElementById(`${p}-table`);
+        if (!table) return;
+        const tbody = table.querySelector('tbody');
         tbody.innerHTML = '';
+        
         tasks.filter(t => t.person.toLowerCase() === p).forEach(task => {
             const tr = document.createElement('tr');
             if (task.done) tr.classList.add('done');
@@ -137,8 +140,11 @@ function calculateOverdue(deadline) {
 }
 
 function renderReminders() {
-    const tbody = document.getElementById('reminders-table').querySelector('tbody');
+    const table = document.getElementById('reminders-table');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
     tbody.innerHTML = '';
+    
     const overdue = tasks.filter(t => !t.done)
         .map(t => ({...t, overdueDays: calculateOverdue(t.deadline)}))
         .sort((a,b) => b.overdueDays - a.overdueDays);
@@ -149,7 +155,7 @@ function renderReminders() {
             <td>${task.person}</td>
             <td>${task.task_name}</td>
             <td>${task.deadline}</td>
-            <td>${task.overdueDays > 0 ? task.overdueDays : 'Not yet'}</td>
+            <td>${task.overdueDays > 0 ? task.overdueDays + ' days' : 'Not yet'}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -165,13 +171,15 @@ function getWeekNumber(dateStr) {
 
 function renderEarnings() {
     const container = document.getElementById('earnings-summary');
+    if (!container) return;
+    
     const today = getCurrentDateISO();
     const week = getWeekNumber(today);
     const year = new Date(today).getUTCFullYear();
     const month = new Date(today).getUTCMonth() + 1;
 
     const doneWork = tasks.filter(t => t.done && t.type === 'work');
-    const sum = filter => doneWork.filter(filter).reduce((s,t) => s + t.amount, 0);
+    const sum = filter => doneWork.filter(filter).reduce((s,t) => s + (t.amount || 0), 0);
 
     const daily = sum(t => t.completed_date === today);
     const weekly = sum(t => getWeekNumber(t.completed_date) === week && new Date(t.completed_date).getUTCFullYear() === year);
@@ -179,23 +187,31 @@ function renderEarnings() {
 
     container.innerHTML = `
         <h3>Our Combined Earnings 💕</h3>
-        <p>Today: KSh ${daily}</p>
-        <p>This Week: KSh ${weekly}</p>
-        <p>This Month: KSh ${monthly}</p>
+        <p>Today: KSh ${daily.toLocaleString()}</p>
+        <p>This Week: KSh ${weekly.toLocaleString()}</p>
+        <p>This Month: KSh ${monthly.toLocaleString()}</p>
     `;
 }
 
 // === Google Sheets Integration ===
 async function loadFromSheets() {
     try {
-        const res = await fetch(SHEETS_CSV_URL + '?t=' + Date.now());
+        // Use cache: "no-store" to ensure we always get the latest data
+        const res = await fetch(SHEETS_CSV_URL, { cache: "no-store" });
         if (!res.ok) throw new Error('Sheet not accessible');
+        
         const text = await res.text();
+        
+        // Safety check: If Google returns HTML (login page), don't parse it
+        if (text.trim().startsWith('<!DOCTYPE html>')) {
+            throw new Error('Received HTML instead of CSV. Check "Publish to Web" settings.');
+        }
+
         parseCSV(text);
         renderTasks();
+        console.log("Synced with Google Sheets ✅");
     } catch (e) {
-        console.error(e);
-        alert('Could not load from Google Sheet. Using local data.\nCheck if the sheet is still published as CSV.');
+        console.warn("Sheets sync failed:", e.message);
         loadFromLocalStorage();
     }
 }
@@ -203,31 +219,38 @@ async function loadFromSheets() {
 function parseCSV(text) {
     tasks = [];
     nextId = 1;
-    const lines = text.trim().split('\n');
+    const lines = text.trim().split(/\r?\n/);
     if (lines.length <= 1) return;
+
+    // Advanced regex to handle commas inside quotes
+    const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+
     lines.slice(1).forEach(line => {
-        const parts = line.split(',');
+        const parts = line.split(regex).map(part => part.replace(/^"|"$/g, '').trim());
         if (parts.length < 8) return;
+        
         const task = {
             id: parseInt(parts[0]) || 0,
             task_name: parts[1] || '',
             type: parts[2] || 'other',
             amount: parseFloat(parts[3]) || 0,
             deadline: parts[4] || '',
-            done: parts[5] === 'true',
+            done: parts[5].toLowerCase() === 'true',
             completed_date: parts[6] || '',
             person: parts[7] || ''
         };
+        
         if (task.id >= nextId) nextId = task.id + 1;
         tasks.push(task);
     });
 }
 
+// === Local Storage Fallback ===
 function loadFromLocalStorage() {
     const saved = localStorage.getItem('midara_tasks');
     if (saved) {
         tasks = JSON.parse(saved);
-        nextId = tasks.reduce((max, t) => Math.max(max, t.id || 0) + 1, 1);
+        nextId = tasks.reduce((max, t) => Math.max(max, t.id || 0), 0) + 1;
         renderTasks();
     }
 }
@@ -238,23 +261,25 @@ function saveToLocalStorage() {
 
 function downloadUpdatedCSV() {
     const header = 'id,task_name,type,amount,deadline,done,completed_date,person\n';
-    const rows = tasks.map(t => `${t.id},${t.task_name},${t.type},${t.amount},${t.deadline},${t.done},${t.completed_date},${t.person}`).join('\n');
+    // Use JSON.stringify to wrap names in quotes if they have commas
+    const rows = tasks.map(t => 
+        `${t.id},"${t.task_name.replace(/"/g, '""')}",${t.type},${t.amount},${t.deadline},${t.done},${t.completed_date},${t.person}`
+    ).join('\n');
+    
     const csvContent = header + rows;
-
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'midara-data-updated.csv';
+    a.download = `midara-data-${getCurrentDateISO()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 
-    alert('CSV downloaded! 💕\nImport this file into your Google Sheet:\nFile → Import → Upload → Replace current sheet');
+    alert('CSV downloaded! 💕\n\nTo sync permanently:\n1. Open your Google Sheet\n2. File → Import → Upload\n3. Select this file\n4. Choose "Replace current sheet"');
 }
 
-// === Init ===
+// === Initialization ===
 updateDate();
 setInterval(updateDate, 60000);
 setInterval(loadFromSheets, 30000); // Auto-refresh every 30s
 loadFromSheets(); // Initial load
-
