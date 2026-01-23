@@ -6,16 +6,58 @@
     <title>MIDARA</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#6a11cb">
+    <meta name="theme-color" content="#6a11cb">
+    <style>
+        /* Essential styles for the new calendar feature */
+        .calendar-container {
+            max-width: 400px;
+            margin: 20px auto;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        #calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+            text-align: center;
+        }
+        .calendar-header {
+            font-weight: bold;
+            color: #6a11cb;
+            padding-bottom: 10px;
+        }
+        .calendar-day {
+            padding: 10px 5px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: 0.3s;
+            background: #f8f9fa;
+        }
+        .has-completed {
+            background-color: #28a745 !important;
+            color: white !important;
+            font-weight: bold;
+        }
+        #day-details {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+            display: none;
+            border: 2px solid #28a745;
+        }
+    </style>
     <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js');
-}
-</script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+    </script>
 </head>
 <body>
 
-    <!-- Login Screen -->
     <div id="login-screen">
         <div class="login-box">
             <h1>MIDARA 💕</h1>
@@ -27,7 +69,6 @@ if ('serviceWorker' in navigator) {
         </div>
     </div>
 
-    <!-- Main App -->
     <div id="main-app" style="display: none;">
         <header>
             <h1>MIDARA</h1>
@@ -36,18 +77,31 @@ if ('serviceWorker' in navigator) {
         </header>
 
         <div class="controls" style="text-align: center; margin: 15px 0; padding: 0 10px;">
-            <button onclick="loadFromSheets()">Refresh from Sheet</button>
-            <button onclick="downloadUpdatedCSV()">Download Updated CSV</button>
+            <button onclick="loadFromSheets()">Refresh Sync</button>
+            <button onclick="downloadUpdatedCSV()">Backup Data (CSV)</button>
             <button onclick="logout()" class="logout-btn">Logout</button>
         </div>
 
         <div class="tabs">
-            <button onclick="showTab('daily')" class="active">Daily To-Do</button>
+            <button onclick="showTab('daily-todo')" class="active">Daily To-Do</button>
             <button onclick="showTab('reminders')">Reminders</button>
+            <button onclick="showTab('manage')">Manage Tasks</button>
+            <button onclick="showTab('completed-tasks')">History</button>
             <button onclick="showTab('earnings')">Earnings</button>
         </div>
 
-        <div id="daily" class="tab-content">
+        <div id="daily-todo" class="tab-content">
+            <h2>Today's Focus 📝</h2>
+            <p style="text-align:center; font-style:italic;">Tasks due today that are not yet finished.</p>
+            <table id="daily-todo-table">
+                <thead>
+                    <tr><th>Who</th><th>Task</th><th>Type</th><th>Done?</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="manage" class="tab-content" style="display:none;">
             <div class="columns">
                 <div class="column">
                     <h2>Gachara</h2>
@@ -62,7 +116,7 @@ if ('serviceWorker' in navigator) {
                         <button type="button" onclick="addTask('Gachara')">Add Task</button>
                     </form>
                     <table id="gachara-table">
-                        <thead><tr><th>Name</th><th>Type</th><th>Amount</th><th>Deadline</th><th>Done</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Type</th><th>Amt</th><th>Deadline</th><th>Done</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -80,7 +134,7 @@ if ('serviceWorker' in navigator) {
                         <button type="button" onclick="addTask('Mideva')">Add Task</button>
                     </form>
                     <table id="mideva-table">
-                        <thead><tr><th>Name</th><th>Type</th><th>Amount</th><th>Deadline</th><th>Done</th></tr></thead>
+                        <thead><tr><th>Name</th><th>Type</th><th>Amt</th><th>Deadline</th><th>Done</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -88,15 +142,31 @@ if ('serviceWorker' in navigator) {
         </div>
 
         <div id="reminders" class="tab-content" style="display:none;">
-            <h2>Reminders – Most Overdue First</h2>
+            <h2>Reminders 🔔</h2>
             <table id="reminders-table">
-                <thead><tr><th>Person</th><th>Name</th><th>Deadline</th><th>Overdue Days</th></tr></thead>
+                <thead><tr><th>Person</th><th>Name</th><th>Deadline</th><th>Status</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
 
+        <div id="completed-tasks" class="tab-content" style="display:none;">
+            <h2>Completion History 🗓️</h2>
+            <div class="calendar-container">
+                <div id="calendar-grid">
+                    <div class="calendar-header">Sun</div>
+                    <div class="calendar-header">Mon</div>
+                    <div class="calendar-header">Tue</div>
+                    <div class="calendar-header">Wed</div>
+                    <div class="calendar-header">Thu</div>
+                    <div class="calendar-header">Fri</div>
+                    <div class="calendar-header">Sat</div>
+                    </div>
+            </div>
+            <div id="day-details">
+                </div>
+        </div>
+
         <div id="earnings" class="tab-content" style="display:none;">
-            <h2>Our Combined Earnings 💕</h2>
             <div id="earnings-summary"></div>
         </div>
     </div>
@@ -104,5 +174,3 @@ if ('serviceWorker' in navigator) {
     <script src="script.js"></script>
 </body>
 </html>
-
-
