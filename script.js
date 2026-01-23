@@ -51,7 +51,8 @@ function getCurrentDateISO() {
 }
 
 function updateDate() {
-    document.getElementById('current-date').textContent = `Today: ${getCurrentDate()}`;
+    const el = document.getElementById('current-date');
+    if(el) el.textContent = `Today: ${getCurrentDate()}`;
 }
 
 // === UI Control ===
@@ -67,6 +68,10 @@ function showTab(tabId) {
     document.getElementById(tabId).style.display = 'block';
     const btn = document.querySelector(`button[onclick="showTab('${tabId}')"]`);
     if (btn) btn.classList.add('active');
+    
+    if (tabId === 'completed-tasks') {
+        renderCalendar();
+    }
 }
 
 // === Tasks Logic ===
@@ -109,6 +114,26 @@ function markDone(id, checked) {
 
 // === Rendering ===
 function renderTasks() {
+    const today = getCurrentDateISO();
+
+    // 1. Daily To-Do (Undone tasks due today)
+    const dailyTbody = document.querySelector('#daily-todo-table tbody');
+    if (dailyTbody) {
+        dailyTbody.innerHTML = '';
+        const dailyTasks = tasks.filter(t => !t.done && t.deadline === today);
+        dailyTasks.forEach(task => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${task.person}</td>
+                <td>${task.task_name}</td>
+                <td>${task.type}</td>
+                <td><input type="checkbox" onchange="markDone(${task.id}, this.checked)"></td>
+            `;
+            dailyTbody.appendChild(tr);
+        });
+    }
+
+    // 2. Main Person Tables
     ['gachara', 'mideva'].forEach(p => {
         const table = document.getElementById(`${p}-table`);
         if (!table) return;
@@ -128,8 +153,10 @@ function renderTasks() {
             tbody.appendChild(tr);
         });
     });
+
     renderReminders();
     renderEarnings();
+    renderCalendar();
 }
 
 function calculateOverdue(deadline) {
@@ -145,6 +172,7 @@ function renderReminders() {
     const tbody = table.querySelector('tbody');
     tbody.innerHTML = '';
     
+    // Reminders shows all undone tasks that are NOT due today (past due or future)
     const overdue = tasks.filter(t => !t.done)
         .map(t => ({...t, overdueDays: calculateOverdue(t.deadline)}))
         .sort((a,b) => b.overdueDays - a.overdueDays);
@@ -155,12 +183,69 @@ function renderReminders() {
             <td>${task.person}</td>
             <td>${task.task_name}</td>
             <td>${task.deadline}</td>
-            <td>${task.overdueDays > 0 ? task.overdueDays + ' days' : 'Not yet'}</td>
+            <td>${task.overdueDays > 0 ? task.overdueDays + ' days' : 'Upcoming'}</td>
         `;
         tbody.appendChild(tr);
     });
 }
 
+// === Calendar & Completed Tasks Logic ===
+function renderCalendar() {
+    const calendarGrid = document.getElementById('calendar-grid');
+    if (!calendarGrid) return;
+    calendarGrid.innerHTML = '';
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // Create empty slots for start of month
+    for (let i = 0; i < firstDay; i++) {
+        calendarGrid.appendChild(document.createElement('div'));
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayEl = document.createElement('div');
+        dayEl.className = 'calendar-day';
+        dayEl.textContent = day;
+
+        const tasksOnDay = tasks.filter(t => t.done && t.completed_date === dateStr);
+        if (tasksOnDay.length > 0) {
+            dayEl.classList.add('has-completed');
+            dayEl.onclick = () => showCompletedDetails(dateStr, tasksOnDay);
+        }
+        calendarGrid.appendChild(dayEl);
+    }
+}
+
+function showCompletedDetails(date, dayTasks) {
+    const detailDiv = document.getElementById('day-details');
+    detailDiv.style.display = 'block';
+    detailDiv.innerHTML = `
+        <h4>Tasks Completed on ${date}</h4>
+        <table class="task-table">
+            <thead>
+                <tr><th>Person</th><th>Task</th><th>Type</th><th>Amount</th></tr>
+            </thead>
+            <tbody>
+                ${dayTasks.map(t => `
+                    <tr>
+                        <td>${t.person}</td>
+                        <td>${t.task_name}</td>
+                        <td>${t.type}</td>
+                        <td>${t.amount || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// === Earnings Logic ===
 function getWeekNumber(dateStr) {
     const d = new Date(dateStr);
     const dayNum = (d.getUTCDay() + 6) % 7 + 1;
@@ -196,22 +281,16 @@ function renderEarnings() {
 // === Google Sheets Integration ===
 async function loadFromSheets() {
     try {
-        // Use cache: "no-store" to ensure we always get the latest data
         const res = await fetch(SHEETS_CSV_URL, { cache: "no-store" });
         if (!res.ok) throw new Error('Sheet not accessible');
-        
         const text = await res.text();
-        
-        // Safety check: If Google returns HTML (login page), don't parse it
-        if (text.trim().startsWith('<!DOCTYPE html>')) {
-            throw new Error('Received HTML instead of CSV. Check "Publish to Web" settings.');
-        }
+        if (text.trim().startsWith('<!DOCTYPE html>')) throw new Error('CSV sync error');
 
         parseCSV(text);
         renderTasks();
-        console.log("Synced with Google Sheets ✅");
+        console.log("Synced ✅");
     } catch (e) {
-        console.warn("Sheets sync failed:", e.message);
+        console.warn("Using Local Cache");
         loadFromLocalStorage();
     }
 }
@@ -221,8 +300,6 @@ function parseCSV(text) {
     nextId = 1;
     const lines = text.trim().split(/\r?\n/);
     if (lines.length <= 1) return;
-
-    // Advanced regex to handle commas inside quotes
     const regex = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
 
     lines.slice(1).forEach(line => {
@@ -261,7 +338,6 @@ function saveToLocalStorage() {
 
 function downloadUpdatedCSV() {
     const header = 'id,task_name,type,amount,deadline,done,completed_date,person\n';
-    // Use JSON.stringify to wrap names in quotes if they have commas
     const rows = tasks.map(t => 
         `${t.id},"${t.task_name.replace(/"/g, '""')}",${t.type},${t.amount},${t.deadline},${t.done},${t.completed_date},${t.person}`
     ).join('\n');
@@ -274,12 +350,10 @@ function downloadUpdatedCSV() {
     a.download = `midara-data-${getCurrentDateISO()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-
-    alert('CSV downloaded! 💕\n\nTo sync permanently:\n1. Open your Google Sheet\n2. File → Import → Upload\n3. Select this file\n4. Choose "Replace current sheet"');
 }
 
 // === Initialization ===
 updateDate();
 setInterval(updateDate, 60000);
-setInterval(loadFromSheets, 30000); // Auto-refresh every 30s
-loadFromSheets(); // Initial load
+setInterval(loadFromSheets, 30000);
+loadFromSheets();
